@@ -6,6 +6,9 @@ O,ti kainourio package katevazete sto conda enviroment valte to sto additional_d
 pip install package==version
 ```
 
+Episis link gia to report:
+https://www.overleaf.com/7682747425xzwvhrzyythq
+
 # Overview
 
 This repo focuses on the effect that distributed model training has on training time. We will experiment with different number of nodes (up to 3) as well as with different types of neural network models (e.g. simple dense nn, ResNet 50, Bert).
