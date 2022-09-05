@@ -32,5 +32,5 @@ conda env create -f environment.yml
 # Contributors
 
 *   Kontaras Marinos el17050
-*   Mpouras Dimitrios-Stamatios el17072
+*   Bouras Dimitrios-Stamatios el17072
 *   Siozos Theodoros el17083
