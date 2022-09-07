@@ -8,7 +8,9 @@ chmod +x script_name.sh
 
 option1 -> name of model
 
-option1 = cifar_bouras
+option1 = 
+
+          cifar_bouras
 
           cifar_teo
          
@@ -22,7 +24,9 @@ option1 = cifar_bouras
           
 option2 -> number of nodes         
 
-option2 = 1    (the model will be trained only on master vm meaning vm 2)
+option2 = 
+
+          1    (the model will be trained only on master vm meaning vm 2)
 
           2    (the model will be trained  on master vm meaning vm 2 and on vm 1)
           
