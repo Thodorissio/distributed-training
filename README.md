@@ -18,8 +18,12 @@ This repo focuses on the effect that distributed model training has on training 
 You will need to create the conda enviroment from the enviroment.yml file.
 
 ```sh
+cd distributed_training
 conda env create -f environment.yml
+conda activate distributed_training
 ```
+
+Environme
 
 # TODO
 
