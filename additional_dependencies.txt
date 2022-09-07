@@ -1,1 +1,3 @@
 Add your additional dependencies here until the final version of the enviroment
+
+!pip install transformers #dn to xo kanei akoma alla tha to balo
