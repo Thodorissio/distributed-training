@@ -42,14 +42,14 @@ def natural_dataset():
   data=[]
   labels=[]
   random.seed(42)
-  imagePaths = sorted(list(os.listdir("/content/drive/MyDrive/natural_images/"))) #thelei allagi sto path
+  imagePaths = sorted(list(os.listdir("/home/user/distirbuted-training/densenet/natural_images/"))) #thelei allagi sto path
   random.shuffle(imagePaths)
   print(imagePaths)
 
   for img in imagePaths:
-      path=sorted(list(os.listdir("/content/drive/My Drive/natural_images/"+img)))
+      path=sorted(list(os.listdir("/home/user/distirbuted-training/densenet/natural_images/"+img)))
       for i in path:
-          image = cv2.imread("/content/drive/My Drive/natural_images/"+img+'/'+i)
+          image = cv2.imread("/home/user/distirbuted-training/densenet/natural_images/"+img+'/'+i)
           image = cv2.resize(image, (128,128))
           image = img_to_array(image)
           data.append(image)

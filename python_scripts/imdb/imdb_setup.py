@@ -84,7 +84,7 @@ def cat2num(value):
     
 
 def imdb_dataset():
-  df=pd.read_csv("/content/drive/MyDrive/IMDB Dataset.csv")
+  df=pd.read_csv("/home/user/distirbuted-training/IMDB Dataset.csv")
   tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
   df['sentiment']  =  df['sentiment'].apply(cat2num)
   train = df[:450] #kanonika train = df[:45000]
