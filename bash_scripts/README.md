@@ -31,5 +31,9 @@ option2 =
           2    (the model will be trained  on master vm meaning vm 2 and on vm 1)
           
           3    (the model will be trained on all 3 vms)
+
+THE run_parallel.sh SCRIPT IS THE ONLY ONE YOU ACTUALLY NEED.
+
+You run it on master vm with the same options as above and it connects to the other vms and distributes the training , trigering the 2 other scripts (scrpt_1 and script_3) if needed.
       
       
