@@ -1,5 +1,5 @@
-We have 3 scripts one for each vm.
-the scripts must be executed simultaneously on all 3 vms
+We have 3 scripts one for each vm and the highest level script that trigers them from the master vm (the run_parallel.sh)
+the scripts must be executed simultaneously on all 3 vms .This is achieved by the run_parallel.sh functionality.
 
 the commands are : 
 chmod +x script_name.sh 
@@ -34,6 +34,12 @@ option2 =
 
 THE run_parallel.sh SCRIPT IS THE ONLY ONE YOU ACTUALLY NEED.
 
-You run it on master vm with the same options as above and it connects to the other vms and distributes the training , trigering the 2 other scripts (scrpt_1 and script_3) if needed.
+
+
+You run it on master vm with the same options as above:
+
+./run_parallel.sh option1 option2      ,  while you are in the bash_scripts directory on master vm.
+
+and it connects to the other vms and distributes the training , trigering the 2 other scripts (scrpt_1 and script_3) if needed.
       
       
