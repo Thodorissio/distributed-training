@@ -1,7 +1,7 @@
 import sys
 import tensorflow as tf
 
-sys.path.append('../')
+sys.path.append('/home/user/distributed-training/')
 import models
 
 if __name__ == '__main__':
