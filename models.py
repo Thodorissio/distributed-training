@@ -88,8 +88,8 @@ class Cifar_10():
         model = Model(inp, x)
 
         model.compile(optimizer='adam',
-                        loss='sparse_categorical_crossentropy',
-                        metrics=['accuracy'])
+                loss='sparse_categorical_crossentropy',
+                metrics=['accuracy'])
 
         return model
     
@@ -102,17 +102,15 @@ class Cifar_10():
 
         dataset, x_train, y_train, x_test, y_test = self.dataset()
         img_shape = x_train[0].shape
-        classes = len(np.unique(y_train[2]))
+        classes = len(np.unique(y_train))
 
-        strategy = tf.distribute.MultiWorkerMirroredStrategy()
-        with strategy.scope():
-            cifar_model = self.model(inp_shape=img_shape, out_shape=classes)
+        cifar_model = self.model(inp_shape=img_shape, out_shape=classes)
         
         tic = perf_counter()
         history = cifar_model.fit(dataset, epochs=5, steps_per_epoch=70)
         training_time = perf_counter() - tic
         
-        training_accuracy = history.history['sparse_categorical_crossentropy'][-1]
+        training_accuracy = history.history['accuracy'][-1]
 
         return training_time, training_accuracy
 
