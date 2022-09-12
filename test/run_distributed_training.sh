@@ -39,16 +39,16 @@ fuser -k 2222/tcp #empty port 2222
 
 if [ "$NODES" -eq 1 ]; then
     echo 'Training in 1 node'
-    TF_CONFIG='{"cluster": {"worker": ["83.212.80.22:2222"]}, "task": {"index": 0, "type": "worker"}}' /home/user/miniconda3/envs/distributed_training/bin/python3 /home/user/distributed-training/test/worker.py
+    TF_CONFIG='{"cluster": {"worker": ["83.212.80.22:2222"]}, "task": {"index": 0, "type": "worker"}}' /home/user/miniconda3/envs/distributed_training/bin/python3 /home/user/distributed-training/test/run_worker.py $NODES $DATASET
 elif [ "$NODES" -eq 2 ]; then
     echo 'Training in 2 nodes'
-    TF_CONFIG='{"cluster": {"worker": ["83.212.80.22:2222", "192.168.1.1:2222"]}, "task": {"index": 0, "type": "worker"}}' /home/user/miniconda3/envs/distributed_training/bin/python3 /home/user/distributed-training/test/worker.py &
-    ssh slave1 'bash -s' < first_slave_config.sh $NODES
+    TF_CONFIG='{"cluster": {"worker": ["83.212.80.22:2222", "192.168.1.1:2222"]}, "task": {"index": 0, "type": "worker"}}' /home/user/miniconda3/envs/distributed_training/bin/python3 /home/user/distributed-training/test/run_worker.py $NODES $DATASET &
+    ssh slave1 'bash -s' < first_slave_config.sh $NODES $DATASET
 elif [ "$NODES" -eq 3 ]; then
     echo 'Training in 3 nodes'
-    TF_CONFIG='{"cluster": {"worker": ["83.212.80.22:2222", "192.168.1.1:2222", "192.168.1.3:2222"]}, "task": {"index": 0, "type": "worker"}}' /home/user/miniconda3/envs/distributed_training/bin/python3 /home/user/distributed-training/test/worker.py &
-    ssh slave1 'bash -s' < first_slave_config.sh $NODES &
-    ssh slave2 'bash -s' < second_slave_config.sh
+    TF_CONFIG='{"cluster": {"worker": ["83.212.80.22:2222", "192.168.1.1:2222", "192.168.1.3:2222"]}, "task": {"index": 0, "type": "worker"}}' /home/user/miniconda3/envs/distributed_training/bin/python3 /home/user/distributed-training/test/run_worker.py $NODES $DATASET &
+    ssh slave1 'bash -s' < first_slave_config.sh $NODES $DATASET &
+    ssh slave2 'bash -s' < second_slave_config.sh $NODES $DATASET
 fi
 
 echo "The $NODES-node training has been completed!"

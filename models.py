@@ -1,5 +1,8 @@
+from time import perf_counter
 import tensorflow as tf
 import numpy as np
+import pandas as pd
+import sklearn
 
 from tensorflow.keras.layers import Input
 from tensorflow.keras.layers import Conv2D, Dense, Flatten, Dropout
@@ -7,11 +10,14 @@ from tensorflow.keras.layers import GlobalMaxPooling2D, MaxPooling2D
 from tensorflow.keras.layers import BatchNormalization
 from tensorflow.keras.models import Model
 
+from transformers import BertTokenizer, TFBertForSequenceClassification
+from transformers import InputExample, InputFeatures
+
 from typing import Tuple
 
 class Cifar_10():
 
-    def __init__(self, batch_size) -> None:
+    def __init__(self, batch_size: int) -> None:
         
         self.batch_size = batch_size
 
@@ -87,22 +93,58 @@ class Cifar_10():
 
         return model
     
-    def run_model(self):
+    def run_model(self) -> Tuple[float, float]:
+        """Trains the cifar_10 model with multiworker mirrored strategy
 
-        dataset, x_train, y_train, x_test, y_test= self.dataset()
+        Returns:
+            Tuple[float, float]: total training time and final training accuracy
+        """
+
+        dataset, x_train, y_train, x_test, y_test = self.dataset()
         img_shape = x_train[0].shape
         classes = len(np.unique(y_train[2]))
 
         strategy = tf.distribute.MultiWorkerMirroredStrategy()
         with strategy.scope():
-            cifar_model = cifar.model(inp_shape=img_shape, out_shape=classes)
+            cifar_model = self.model(inp_shape=img_shape, out_shape=classes)
         
-        cifar_model.fit(dataset, epochs=5, steps_per_epoch=70)
+        tic = perf_counter()
+        history = cifar_model.fit(dataset, epochs=5, steps_per_epoch=70)
+        training_time = perf_counter() - tic
+        
+        training_accuracy = history.history['sparse_categorical_crossentropy'][-1]
+
+        return training_time, training_accuracy
 
 
+class IMDB_sentiment():
 
+    def init(self, batch_size: int) -> None:
 
-cifar = Cifar_10(128)
-dataset, x_train, y_train, x_test, y_test= cifar.cifar_dataset()
-model = cifar.cifar_model(x_train[0].shape, len(set(y_train)))
-print(type(model))
+        self.batch_size = batch_size
+
+    def dataset(self):
+
+        df = pd.read_csv("./IMDB Dataset.csv")
+
+        tokenizer = BertTokenizer.from_pretrained("bert-case-uncased")
+
+        df['sentiment'] = df['sentiment'].apply(lambda x: 1 if x == 'positive' else 0)
+
+        train_df = df[:45000] 
+        test_df = df[45000:]
+        
+        def convert_data_to_tf_data(df: pd.DataFrame, tokenizer) -> pd.DataFrame:
+            
+            examples_df = df.apply(lambda x: InputExample(
+                                                guid=None, 
+                                                text_a = x['review'], 
+                                                label = x['sentiment']), 
+                                                axis = 1,
+                                            )
+
+            return examples_df
+
+        
+
+        
