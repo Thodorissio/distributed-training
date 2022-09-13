@@ -2,13 +2,23 @@ from time import perf_counter
 import tensorflow as tf
 import numpy as np
 import pandas as pd
-import sklearn
+import cv2
+import os
+import random
+
+from sklearn.preprocessing import LabelBinarizer
+from sklearn.model_selection import train_test_split
 
 from tensorflow.keras.layers import Input
 from tensorflow.keras.layers import Conv2D, Dense, Flatten, Dropout
-from tensorflow.keras.layers import GlobalMaxPooling2D, MaxPooling2D
+from tensorflow.keras.layers import GlobalAveragePooling2D, MaxPooling2D
 from tensorflow.keras.layers import BatchNormalization
+
+from tensorflow.keras.applications import DenseNet121
+
 from tensorflow.keras.models import Model
+
+from tensorflow.keras.preprocessing.image import img_to_array, ImageDataGenerator
 
 from transformers import AutoTokenizer, TFBertForSequenceClassification
 from transformers import InputExample, InputFeatures
@@ -20,14 +30,16 @@ options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoSha
 
 #We set the seed value so as to have reproducible results
 seed_value = 42
+random.seed(seed_value)
 np.random.seed(seed_value)
 tf.random.set_seed(seed_value)
 
 class Cifar_10():
 
-    def __init__(self, batch_size: int) -> None:
+    def __init__(self, batch_size: int, epochs: int) -> None:
         
         self.batch_size = batch_size
+        self.epochs = epochs
 
 
     def dataset(self) -> Tuple[tf.data.Dataset, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
@@ -116,7 +128,7 @@ class Cifar_10():
         cifar_model = self.model(inp_shape=img_shape, out_shape=classes)
         
         tic = perf_counter()
-        history = cifar_model.fit(train_dataset, epochs=5, steps_per_epoch=70)
+        history = cifar_model.fit(train_dataset, epochs=self.epochs, steps_per_epoch=x_train.shape[0] // self.batch_size)
         training_time = perf_counter() - tic
         
         training_accuracy = history.history['accuracy'][-1]
@@ -126,9 +138,10 @@ class Cifar_10():
 
 class IMDB_sentiment():
 
-    def __init__(self, batch_size: int) -> None:
-
+    def __init__(self, batch_size: int, epochs: int) -> None:
+        
         self.batch_size = batch_size
+        self.epochs = epochs
 
     def convert_data_to_tf_data(self, df: pd.DataFrame, tokenizer: AutoTokenizer) -> pd.DataFrame:
             
@@ -180,11 +193,10 @@ class IMDB_sentiment():
             )
 
     def dataset(self) -> Tuple[tf.data.Dataset, tf.data.Dataset]:
-        """loads the cifar_10 dataset
+        """loads the IMDB Dataset
 
         Returns:
-            Tuple[tf.data.Dataset, np.ndarray, np.ndarray, np.ndarray, np.ndarray]: 
-                whole training dataset as well as x,y train and test sets
+            Tuple[tf.data.Dataset, tf.data.Dataset: training dataset and testing tensor datasets
         """
 
         df = pd.read_csv("/home/user/distributed-training/datasets/IMDB Dataset.csv")
@@ -204,7 +216,7 @@ class IMDB_sentiment():
 
         return train_data, test_data
     
-    def run_model(self):
+    def run_model(self) -> Tuple[float, float]:
         """Trains the bert transformer on IMBD_sentiment_analysis data
 
         Returns:
@@ -212,7 +224,8 @@ class IMDB_sentiment():
         """
         
         train_data, _ = self.dataset()
-
+        train_data = train_data.with_options(options)
+        
         model = TFBertForSequenceClassification.from_pretrained("bert-base-uncased")
 
         #Only the last layer will be fine tuned cause of RAM limitations
@@ -225,11 +238,105 @@ class IMDB_sentiment():
 
 
         tic = perf_counter()
-        history = model.fit(train_data, epochs=5)
+        history = model.fit(train_data, epochs=self.epochs)
         training_time = perf_counter() - tic
         
         training_accuracy = history.history['accuracy'][-1]
 
         return training_time, training_accuracy
 
+
+class Natural_images_densenet():
+
+    def __init__(self, batch_size: int, epochs: int) -> None:
+        
+        self.batch_size = batch_size
+        self.epochs = epochs
+    
+    def dataset(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        """creates the data sets from the natural images dataset
+
+        Returns:
+            Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]: data sets
+        """
+
+        data=[]
+        labels=[]
+        
+        imagePaths = sorted(list(os.listdir("/home/user/distributed-training/datasets/natural_images/")))
+
+        for img in imagePaths:
+
+            path=sorted(list(os.listdir("/home/user/distributed-training/datasets/natural_images/"+img)))
+
+            for i in path:
+                image = cv2.imread("/home/user/distributed-training/datasets/natural_images/"+img+'/'+i)
+                image = cv2.resize(image, (128,128))
+                image = img_to_array(image)
+                data.append(image)
+                label = img
+                labels.append(label)
+        
+        data = np.array(data, dtype="float32") / 255.0
+        labels = np.array(labels)
+        mlb = LabelBinarizer()
+        labels = mlb.fit_transform(labels)
+
+        (x_train, x_test, y_train, y_test) = train_test_split(data, labels, test_size=0.2, random_state=42)
+
+        return x_train , x_test, y_train, y_test
+    
+    def model(self) -> tf.keras.Model:
+        """creates the model which is based on DenseNet121
+
+        Returns:
+            tf.keras.Model: densenet model with 2 added layers
+        """
+
+        densenet = DenseNet121(weights='imagenet', include_top=False, input_shape=(128, 128, 3))
+
+        x = GlobalAveragePooling2D()(densenet.output)
+        x = BatchNormalization()(x)
+        x = Dropout(0.5)(x)
+        x = Dense(1024, activation='relu')(x) 
+        x = Dense(512, activation='relu')(x) 
+        x = BatchNormalization()(x)
+        x = Dropout(0.5)(x)
+
+        preds = Dense(8, activation='softmax')(x)
+        model = Model(inputs=densenet.input, outputs=preds)
+
+        for layer in model.layers[:-8]:
+            layer.trainable=False
+            
+        for layer in model.layers[-8:]:
+            layer.trainable=True
+
+        model.compile(optimizer='Adam',loss='categorical_crossentropy',metrics=['accuracy'])
+        
+        return model
+    
+    def run_model(self) -> Tuple[float, float]:
+        """Trains the densenet model on natural images data
+
+        Returns:
+            Tuple[float, float]: total training time and final training accuracy
+        """
+        
+        x_train, _, y_train, _ = self.dataset()
+
+        data_gen = ImageDataGenerator(zoom_range = 0.2, horizontal_flip=True, shear_range=0.2)
+        data_gen.fit(x_train)
+        training_data = data_gen.flow(x_train, y_train, batch_size=self.batch_size)
+
+        model = self.model()
+
+        tic = perf_counter()
+        history = model.fit(training_data, epochs=self.epochs, steps_per_epoch=x_train.shape[0] // self.batch_size)
+        training_time = perf_counter() - tic
+        
+        training_accuracy = history.history['accuracy'][-1]
+
+        return training_time, training_accuracy
+        
         
