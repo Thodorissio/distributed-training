@@ -52,16 +52,12 @@ class Cifar_10():
                 whole training dataset as well as x,y train and test sets
         """
         
-        # Load in the data
         cifar10 = tf.keras.datasets.cifar10
         
-        # Distribute it to train and test set
         (x_train, y_train), (x_test, y_test) = cifar10.load_data()
 
-        # Reduce pixel values
         x_train, x_test = x_train / 255.0, x_test / 255.0
-        
-        # flatten the label values
+
         y_train, y_test = y_train.flatten(), y_test.flatten()
         train_dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train)).shuffle(60000).repeat().batch(self.batch_size)
 
@@ -99,12 +95,10 @@ class Cifar_10():
         
         x = Flatten()(x)
         x = Dropout(0.2)(x)
-        
-        # Hidden layer
+
         x = Dense(1024, activation='relu')(x)
         x = Dropout(0.2)(x)
-        
-        # last hidden layer i.e.. output layer
+
         x = Dense(out_shape, activation='softmax')(x)
         
         model = Model(inp, x)
@@ -349,8 +343,8 @@ class Fashion_mnist():
         self.batch_size = batch_size
         self.epochs = epochs
     
-    def dataset(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        """loads fashion mnist data and creats dataset
+    def dataset(self) -> Tuple[tf.data.Dataset, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        """loads fashion mnist data and creates dataset
 
         Returns:
             Tuple[tf.data.Dataset, np.ndarray, np.ndarray, np.ndarray, np.ndarray]: 
@@ -403,7 +397,79 @@ class Fashion_mnist():
             Tuple[float, float]: total training time and final training accuracy
         """
         
-        train_dataset, x_train, y_train, _, _ = self.dataset()
+        train_dataset, x_train, _, _, _ = self.dataset()
+        train_dataset = train_dataset.with_options(options)
+
+        model = self.model()
+
+        tic = perf_counter()
+        history = model.fit(train_dataset, batch_size=self.batch_size, epochs=self.epochs, steps_per_epoch=x_train.shape[0] // self.batch_size)
+        training_time = perf_counter() - tic
+        
+        training_accuracy = history.history['accuracy'][-1]
+
+        return training_time, training_accuracy
+
+
+class Mnist_restnet():
+
+    def __init__(self, batch_size: int, epochs: int) -> None:
+        
+        self.batch_size = batch_size
+        self.epochs = epochs
+    
+    def dataset(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        """loads mnist data and creates dataset
+
+        Returns:
+            Tuple[tf.data.Dataset, np.ndarray, np.ndarray, np.ndarray, np.ndarray]: 
+                whole training dataset as well as x,y train and test sets
+        """
+
+        (x_train, y_train), (_, _) = tf.keras.datasets.mnist.load_data()
+
+        x_train = np.expand_dims(x_train, axis=-1)
+        x_train = np.repeat(x_train, 3, axis=-1)
+        x_train = x_train.astype('float32') / 255
+        x_train = tf.image.resize(x_train, [32,32])
+
+        y_train = tf.keras.utils.to_categorical(y_train , num_classes=10)
+
+        train_dataset = tf.data.Dataset.from_tensor_slices(
+            (x_train, y_train)).shuffle(60000).repeat().batch(self.batch_size)
+
+        return train_dataset, x_train
+    
+    def model(self) -> tf.keras.Model:
+        """Loads resnet50 model and compiles it
+
+        Returns:
+            tf.keras.Model: model
+        """
+
+        inp = tf.keras.Input(shape=(32,32,3))
+
+        resnet_model = tf.keras.applications.ResNet50(weights='imagenet',
+                                                    include_top = False, 
+                                                    input_tensor = inp)
+
+        x = tf.keras.layers.GlobalMaxPooling2D()(resnet_model.output)
+        output = tf.keras.layers.Dense(10, activation='softmax', use_bias=True)(x)
+
+        model = tf.keras.Model(resnet_model.input, output)
+
+        model.compile(optimizer='Adam', loss='categorical_crossentropy', metrics=['accuracy'])
+
+        return model
+
+    def run_model(self) -> Tuple[float, float]:
+        """Trains the mnist model with resnet50
+
+        Returns:
+            Tuple[float, float]: total training time and final training accuracy
+        """
+        
+        train_dataset, x_train = self.dataset()
         train_dataset = train_dataset.with_options(options)
 
         model = self.model()

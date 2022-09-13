@@ -23,7 +23,7 @@ if __name__ == '__main__':
 
         with strategy.scope():
             time, accuracy = model.run_model()
-            
+
         print(f'time: {time}s')
         print(f'accuracy: {accuracy}')
 
@@ -36,7 +36,7 @@ if __name__ == '__main__':
 
         with strategy.scope():
             time, accuracy = model.run_model()
-            
+
         print(f'time: {time}s')
         print(f'accuracy: {accuracy}')
 
@@ -49,7 +49,7 @@ if __name__ == '__main__':
 
         with strategy.scope():
             time, accuracy = model.run_model()
-            
+
         print(f'time: {time}s')
         print(f'accuracy: {accuracy}')
 
@@ -66,12 +66,25 @@ if __name__ == '__main__':
         print(f'time: {time}s')
         print(f'accuracy: {accuracy}')
 
+    elif model_name  == 'mnist':
+
+        mnist_batch_size = 512 // nodes
+        epochs = 5
+        model = models.Mnist_restnet(batch_size=mnist_batch_size, epochs=epochs)
+        strategy = tf.distribute.MultiWorkerMirroredStrategy()
+
+        with strategy.scope():
+            time, accuracy = model.run_model()
+
+        print(f'time: {time}s')
+        print(f'accuracy: {accuracy}')
+
     else:
+        
         print('Invalid dataset given.')
         print('Availiable datasets:')
         print('- cifar_10')
         print('- bert_imdb')
         print('- natural_images_densenet')
-        print('- mnist')
         print('- fashion_mnist')
-
+        print('- mnist')
