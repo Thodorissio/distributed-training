@@ -10,7 +10,7 @@ from tensorflow.keras.layers import GlobalMaxPooling2D, MaxPooling2D
 from tensorflow.keras.layers import BatchNormalization
 from tensorflow.keras.models import Model
 
-from transformers import BertTokenizer, TFBertForSequenceClassification
+from transformers import AutoTokenizer, TFBertForSequenceClassification
 from transformers import InputExample, InputFeatures
 
 from typing import Tuple
@@ -94,7 +94,7 @@ class Cifar_10():
         return model
     
     def run_model(self) -> Tuple[float, float]:
-        """Trains the cifar_10 model with multiworker mirrored strategy
+        """Trains the cifar_10 model
 
         Returns:
             Tuple[float, float]: total training time and final training accuracy
@@ -117,22 +117,11 @@ class Cifar_10():
 
 class IMDB_sentiment():
 
-    def init(self, batch_size: int) -> None:
+    def __init__(self, batch_size: int) -> None:
 
         self.batch_size = batch_size
 
-    def dataset(self):
-
-        df = pd.read_csv("./IMDB Dataset.csv")
-
-        tokenizer = BertTokenizer.from_pretrained("bert-case-uncased")
-
-        df['sentiment'] = df['sentiment'].apply(lambda x: 1 if x == 'positive' else 0)
-
-        train_df = df[:45000] 
-        test_df = df[45000:]
-        
-        def convert_data_to_tf_data(df: pd.DataFrame, tokenizer) -> pd.DataFrame:
+    def convert_data_to_tf_data(self, df: pd.DataFrame, tokenizer: AutoTokenizer) -> pd.DataFrame:
             
             examples_df = df.apply(lambda x: InputExample(
                                                 guid=None, 
@@ -140,9 +129,94 @@ class IMDB_sentiment():
                                                 label = x['sentiment']), 
                                                 axis = 1,
                                             )
+            
+            features = [] 
 
-            return examples_df
+            for e in examples_df:
+                input_dict = tokenizer.encode_plus(
+                    e.text_a,
+                    add_special_tokens=True,    
+                    max_length=128,    
+                    return_token_type_ids=True,
+                    return_attention_mask=True,
+                    pad_to_max_length=True, 
+                    truncation=True
+                )
 
+                input_ids, token_type_ids, attention_mask = (input_dict["input_ids"],input_dict["token_type_ids"], input_dict['attention_mask'])
+                features.append(InputFeatures( input_ids=input_ids, attention_mask=attention_mask, token_type_ids=token_type_ids, label=e.label) )
+
+            def gen():
+                for f in features:
+                    yield (
+                        {
+                            "input_ids": f.input_ids,
+                            "attention_mask": f.attention_mask,
+                            "token_type_ids": f.token_type_ids,
+                        },
+                        f.label,
+                    )
+
+            return tf.data.Dataset.from_generator(
+                gen,
+                ({"input_ids": tf.int32, "attention_mask": tf.int32, "token_type_ids": tf.int32}, tf.int64),
+                (
+                    {
+                        "input_ids": tf.TensorShape([None]),
+                        "attention_mask": tf.TensorShape([None]),
+                        "token_type_ids": tf.TensorShape([None]),
+                    },
+                    tf.TensorShape([]),
+                ),
+            )
+
+    def dataset(self) -> Tuple[tf.data.Dataset, tf.data.Dataset]:
+        """loads the cifar_10 dataset
+
+        Returns:
+            Tuple[tf.data.Dataset, np.ndarray, np.ndarray, np.ndarray, np.ndarray]: 
+                whole training dataset as well as x,y train and test sets
+        """
+
+        df = pd.read_csv("/home/user/distributed-training/datasets/IMDB Dataset.csv")
+
+        tokenizer = AutoTokenizer.from_pretrained("bert-base-cased")
+
+        df['sentiment'] = df['sentiment'].apply(lambda x: 1 if x == 'positive' else 0)
+
+        train_df = df[:45000] 
+        test_df = df[45000:]
+
+        train_data = self.convert_data_to_tf_data(df=train_df, tokenizer=tokenizer)
+        train_data = train_data.batch(self.batch_size)
+
+        test_data = self.convert_data_to_tf_data(df=test_df, tokenizer=tokenizer)
+        test_data = test_data.batch(self.batch_size)
+
+        return train_data, test_data
+    
+    def run_model(self):
+        """Trains the bert transformer on IMBD_sentiment_analysis data
+
+        Returns:
+            Tuple[float, float]: total training time and final training accuracy
+        """
         
+        train_data, _ = self.dataset()
+
+        model = TFBertForSequenceClassification.from_pretrained("bert-base-uncased")
+
+        model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=3e-5, epsilon=1e-08, clipnorm=1.0), 
+            loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True), 
+            metrics=[tf.keras.metrics.SparseCategoricalAccuracy('accuracy')])
+
+
+        tic = perf_counter()
+        history = model.fit(train_data, epochs=5)
+        training_time = perf_counter() - tic
+        
+        training_accuracy = history.history['accuracy'][-1]
+
+        return training_time, training_accuracy
 
         
