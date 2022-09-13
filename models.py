@@ -15,6 +15,14 @@ from transformers import InputExample, InputFeatures
 
 from typing import Tuple
 
+options = tf.data.Options()
+options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.DATA
+
+#We set the seed value so as to have reproducible results
+seed_value = 42
+np.random.seed(seed_value)
+tf.random.set_seed(seed_value)
+
 class Cifar_10():
 
     def __init__(self, batch_size: int) -> None:
@@ -100,14 +108,15 @@ class Cifar_10():
             Tuple[float, float]: total training time and final training accuracy
         """
 
-        dataset, x_train, y_train, x_test, y_test = self.dataset()
+        train_dataset, x_train, y_train, x_test, y_test = self.dataset()
+        train_dataset = train_dataset.with_options(options)
         img_shape = x_train[0].shape
         classes = len(np.unique(y_train))
 
         cifar_model = self.model(inp_shape=img_shape, out_shape=classes)
         
         tic = perf_counter()
-        history = cifar_model.fit(dataset, epochs=5, steps_per_epoch=70)
+        history = cifar_model.fit(train_dataset, epochs=5, steps_per_epoch=70)
         training_time = perf_counter() - tic
         
         training_accuracy = history.history['accuracy'][-1]
@@ -205,6 +214,10 @@ class IMDB_sentiment():
         train_data, _ = self.dataset()
 
         model = TFBertForSequenceClassification.from_pretrained("bert-base-uncased")
+
+        #Only the last layer will be fine tuned cause of RAM limitations
+        for layer in model.layers[:-1]:
+            layer.trainable=False
 
         model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=3e-5, epsilon=1e-08, clipnorm=1.0), 
             loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True), 
