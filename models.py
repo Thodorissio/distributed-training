@@ -14,9 +14,11 @@ from tensorflow.keras.layers import Conv2D, Dense, Flatten, Dropout
 from tensorflow.keras.layers import GlobalAveragePooling2D, MaxPooling2D
 from tensorflow.keras.layers import BatchNormalization
 
+from tensorflow.keras.datasets import fashion_mnist
+from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.applications import DenseNet121
-
-from tensorflow.keras.models import Model
+from tensorflow.keras.models import Model, Sequential
+from tensorflow.keras.optimizers import SGD
 
 from tensorflow.keras.preprocessing.image import img_to_array, ImageDataGenerator
 
@@ -120,7 +122,7 @@ class Cifar_10():
             Tuple[float, float]: total training time and final training accuracy
         """
 
-        train_dataset, x_train, y_train, x_test, y_test = self.dataset()
+        train_dataset, x_train, y_train, _, _ = self.dataset()
         train_dataset = train_dataset.with_options(options)
         img_shape = x_train[0].shape
         classes = len(np.unique(y_train))
@@ -128,7 +130,7 @@ class Cifar_10():
         cifar_model = self.model(inp_shape=img_shape, out_shape=classes)
         
         tic = perf_counter()
-        history = cifar_model.fit(train_dataset, epochs=self.epochs, steps_per_epoch=x_train.shape[0] // self.batch_size)
+        history = cifar_model.fit(train_dataset, batch_size=self.batch_size, epochs=self.epochs, steps_per_epoch=x_train.shape[0] // self.batch_size)
         training_time = perf_counter() - tic
         
         training_accuracy = history.history['accuracy'][-1]
@@ -238,7 +240,7 @@ class IMDB_sentiment():
 
 
         tic = perf_counter()
-        history = model.fit(train_data, epochs=self.epochs)
+        history = model.fit(train_data, batch_size=self.batch_size, epochs=self.epochs)
         training_time = perf_counter() - tic
         
         training_accuracy = history.history['accuracy'][-1]
@@ -332,11 +334,84 @@ class Natural_images_densenet():
         model = self.model()
 
         tic = perf_counter()
-        history = model.fit(training_data, epochs=self.epochs, steps_per_epoch=x_train.shape[0] // self.batch_size)
+        history = model.fit(training_data, batch_size=self.batch_size, epochs=self.epochs, steps_per_epoch=x_train.shape[0] // self.batch_size)
         training_time = perf_counter() - tic
         
         training_accuracy = history.history['accuracy'][-1]
 
         return training_time, training_accuracy
         
+
+class Fashion_mnist():
+
+    def __init__(self, batch_size: int, epochs: int) -> None:
         
+        self.batch_size = batch_size
+        self.epochs = epochs
+    
+    def dataset(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        """loads fashion mnist data and creats dataset
+
+        Returns:
+            Tuple[tf.data.Dataset, np.ndarray, np.ndarray, np.ndarray, np.ndarray]: 
+                whole training dataset as well as x,y train and test sets
+        """
+
+        (train_x, train_y), (test_x, test_y) = fashion_mnist.load_data()
+
+        train_x = train_x.reshape((train_x.shape[0], 28, 28, 1))
+        test_x = test_x.reshape((test_x.shape[0], 28, 28, 1))
+
+        train_y = to_categorical(train_y)
+        test_y = to_categorical(test_y)
+
+        train_norm = train_x.astype('float32')
+        test_norm = test_x.astype('float32')
+
+        train_norm = train_norm / 255.0
+        test_norm = test_norm / 255.0
+
+        train_dataset = tf.data.Dataset.from_tensor_slices(
+            (train_norm, train_y)).shuffle(60000).repeat().batch(self.batch_size)
+
+        return train_dataset, train_norm, train_y, test_norm, test_y
+    
+    def model(self) -> tf.keras.Model:
+        """creates the model for the fashion mnist training
+
+        Returns:
+            tf.keras.Model: model
+        """
+
+        model = Sequential()
+        model.add(Conv2D(64, (3, 3), padding='same', activation='relu', kernel_initializer='he_uniform', input_shape=(28, 28, 1)))
+        model.add(MaxPooling2D((2, 2)))
+        model.add(Flatten())
+        model.add(Dense(100, activation='relu', kernel_initializer='he_uniform'))
+        model.add(Dense(10, activation='softmax'))
+
+        opt = SGD(lr=0.01, momentum=0.9)
+
+        model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['accuracy'])
+
+        return model
+
+    def run_model(self) -> Tuple[float, float]:
+        """Trains the fashion-mnist model that was created
+
+        Returns:
+            Tuple[float, float]: total training time and final training accuracy
+        """
+        
+        train_dataset, x_train, y_train, _, _ = self.dataset()
+        train_dataset = train_dataset.with_options(options)
+
+        model = self.model()
+
+        tic = perf_counter()
+        history = model.fit(train_dataset, batch_size=self.batch_size, epochs=self.epochs, steps_per_epoch=x_train.shape[0] // self.batch_size)
+        training_time = perf_counter() - tic
+        
+        training_accuracy = history.history['accuracy'][-1]
+
+        return training_time, training_accuracy

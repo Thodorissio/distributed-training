@@ -20,8 +20,10 @@ if __name__ == '__main__':
         epochs = 5
         model = models.Cifar_10(batch_size = cifar_batch_size, epochs=epochs)
         strategy = tf.distribute.MultiWorkerMirroredStrategy()
+
         with strategy.scope():
             time, accuracy = model.run_model()
+            
         print(f'time: {time}s')
         print(f'accuracy: {accuracy}')
 
@@ -31,8 +33,10 @@ if __name__ == '__main__':
         epochs = 5
         model = models.IMDB_sentiment(batch_size = bert_batch_size, epochs=epochs)
         strategy = tf.distribute.MultiWorkerMirroredStrategy()
+
         with strategy.scope():
             time, accuracy = model.run_model()
+            
         print(f'time: {time}s')
         print(f'accuracy: {accuracy}')
 
@@ -42,8 +46,23 @@ if __name__ == '__main__':
         epochs = 5
         model = models.Natural_images_densenet(batch_size=densenet_batch_size, epochs=epochs)
         strategy = tf.distribute.MultiWorkerMirroredStrategy()
+
         with strategy.scope():
             time, accuracy = model.run_model()
+            
+        print(f'time: {time}s')
+        print(f'accuracy: {accuracy}')
+
+    elif model_name  == 'fashion_mnist':
+
+        fashion_mnist_batch_size = 512 // nodes
+        epochs = 5
+        model = models.Fashion_mnist(batch_size=fashion_mnist_batch_size, epochs=epochs)
+        strategy = tf.distribute.MultiWorkerMirroredStrategy()
+
+        with strategy.scope():
+            time, accuracy = model.run_model()
+            
         print(f'time: {time}s')
         print(f'accuracy: {accuracy}')
 
