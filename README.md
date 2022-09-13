@@ -23,13 +23,10 @@ conda env create -f environment.yml
 conda activate distributed_training
 ```
 
-Environme
-
 # TODO
 
-*   Add multinode setup script
-*   Improve model examples
-*   Run multinode training with 2 and 3 different nodes
+*   Finish adding the models in model.py
+*   Run and save the experiments
 *   Create report
 *   Upload results on README and polish repo
 

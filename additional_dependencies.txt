@@ -1,2 +1,0 @@
-Add your additional dependencies here until the final version of the enviroment
-python -m pip install jupyter notebook
