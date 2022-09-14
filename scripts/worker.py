@@ -80,7 +80,7 @@ if __name__ == '__main__':
         print('- fashion_mnist')
         print('- mnist')
     
-    if save_flag and len(args > 2):
+    if save_flag and len(args) > 2:
 
         res_df = pd.DataFrame({
             'model': model_name, 'nodes': nodes, 'training_time': time,
