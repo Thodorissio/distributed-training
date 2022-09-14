@@ -8,6 +8,7 @@ pip install package==version
 
 Episis link gia to report:
 https://www.overleaf.com/7682747425xzwvhrzyythq
+Simiosi apo boura : exo to arxiko report se odt kai docx giati dn ksero latex .mporeite na sublirosete ekei kai na ta kanoume latex sto telos i kati tetoio. 
 
 # Overview
 
