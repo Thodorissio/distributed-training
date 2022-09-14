@@ -1,5 +1,7 @@
 import sys
+import pandas as pd
 import tensorflow as tf
+from os.path import exists
 
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -13,45 +15,38 @@ if __name__ == '__main__':
 
     nodes = int(args[0])
     model_name = args[1]
+    
+    save_flag = True
 
     if model_name == 'cifar_10':
 
-        cifar_batch_size = 256 // nodes
+        batch_size = 256 // nodes
         epochs = 5
-        model = models.Cifar_10(batch_size = cifar_batch_size, epochs=epochs)
+        model = models.Cifar_10(batch_size = batch_size, epochs=epochs)
         strategy = tf.distribute.MultiWorkerMirroredStrategy()
 
         with strategy.scope():
-            time, accuracy = model.run_model()
-
-        print(f'time: {time}s')
-        print(f'accuracy: {accuracy}')
+            time, accuracy = model.run_model()      
 
     elif model_name  == 'bert_imdb':
 
-        bert_batch_size = 512 // nodes
+        batch_size = 512 // nodes
         epochs = 5
-        model = models.IMDB_sentiment(batch_size = bert_batch_size, epochs=epochs)
+        model = models.IMDB_sentiment(batch_size = batch_size, epochs=epochs)
         strategy = tf.distribute.MultiWorkerMirroredStrategy()
 
         with strategy.scope():
-            time, accuracy = model.run_model()
-
-        print(f'time: {time}s')
-        print(f'accuracy: {accuracy}')
+            time, accuracy = model.run_model()      
 
     elif model_name  == 'natural_images_densenet':
 
-        densenet_batch_size = 512 // nodes
+        batch_size = 512 // nodes
         epochs = 5
-        model = models.Natural_images_densenet(batch_size=densenet_batch_size, epochs=epochs)
+        model = models.Natural_images_densenet(batch_size=batch_size, epochs=epochs)
         strategy = tf.distribute.MultiWorkerMirroredStrategy()
 
         with strategy.scope():
-            time, accuracy = model.run_model()
-
-        print(f'time: {time}s')
-        print(f'accuracy: {accuracy}')
+            time, accuracy = model.run_model()      
 
     elif model_name  == 'fashion_mnist':
 
@@ -62,25 +57,21 @@ if __name__ == '__main__':
 
         with strategy.scope():
             time, accuracy = model.run_model()
-            
-        print(f'time: {time}s')
-        print(f'accuracy: {accuracy}')
+              
 
     elif model_name  == 'mnist':
 
-        mnist_batch_size = 512 // nodes
+        batch_size = 512 // nodes
         epochs = 5
-        model = models.Mnist_restnet(batch_size=mnist_batch_size, epochs=epochs)
+        model = models.Mnist_restnet(batch_size=batch_size, epochs=epochs)
         strategy = tf.distribute.MultiWorkerMirroredStrategy()
 
         with strategy.scope():
-            time, accuracy = model.run_model()
-
-        print(f'time: {time}s')
-        print(f'accuracy: {accuracy}')
+            time, accuracy = model.run_model()      
 
     else:
         
+        save_flag = False
         print('Invalid dataset given.')
         print('Availiable datasets:')
         print('- cifar_10')
@@ -88,3 +79,14 @@ if __name__ == '__main__':
         print('- natural_images_densenet')
         print('- fashion_mnist')
         print('- mnist')
+    
+    if save_flag and len(args > 2):
+
+        res_df = pd.DataFrame({
+            'model': model_name, 'nodes': nodes, 'training_time': time,
+            'training_accuracy': accuracy, 'epochs': epochs, 'batch_size': batch_size})
+
+        if exists('/home/user/results.csv'):
+            res_df.to_csv('/home/user/results.csv', mode='a', index=False, header=False)
+        else:
+            res_df.to_csv('/home/user/results.csv', index=False)
