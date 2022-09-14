@@ -25,7 +25,6 @@ conda activate distributed_training
 
 # TODO
 
-*   Finish adding the models in model.py
 *   Run and save the experiments
 *   Create report
 *   Upload results on README and polish repo
