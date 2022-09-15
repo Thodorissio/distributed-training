@@ -15,7 +15,9 @@ if __name__ == '__main__':
 
     nodes = int(args[0])
     model_name = args[1]
-    
+
+    print(args)
+
     save_flag = True
 
     if model_name == 'cifar_10':
@@ -84,7 +86,7 @@ if __name__ == '__main__':
 
         res_df = pd.DataFrame({
             'model': model_name, 'nodes': nodes, 'training_time': time,
-            'training_accuracy': accuracy, 'epochs': epochs, 'batch_size': batch_size})
+            'training_accuracy': accuracy, 'epochs': epochs, 'batch_size': batch_size}, index=[0])
 
         if exists('/home/user/results.csv'):
             res_df.to_csv('/home/user/results.csv', mode='a', index=False, header=False)
