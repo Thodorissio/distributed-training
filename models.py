@@ -209,7 +209,7 @@ class IMDB_sentiment():
         test_df = df[45000:]
 
         train_data = self.convert_data_to_tf_data(df=train_df, tokenizer=tokenizer)
-        train_data = train_data.batch(self.batch_size)
+        train_data = train_data.repeat().batch(self.batch_size)
 
         test_data = self.convert_data_to_tf_data(df=test_df, tokenizer=tokenizer)
         test_data = test_data.batch(self.batch_size)

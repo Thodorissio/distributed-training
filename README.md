@@ -1,12 +1,6 @@
 # Important Note to contributors
 
-O,ti kainourio package katevazete sto conda enviroment valte to sto additional_dependencies.txt ws eksis:
-
-```sh
-pip install package==version
-```
-
-Episis link gia to report:
+Link gia to report:
 https://www.overleaf.com/7682747425xzwvhrzyythq
 
 **Simiosi apo boura** (tha diagrafei sto telos apto readme ) : exo to arxiko report se odt kai docx giati dn ksero latex .mporeite na sublirosete ekei kai na ta kanoume latex sto telos i kati tetoio. (tha diagrafoun ta report arxeia apo to github repo sto telos)
@@ -25,11 +19,31 @@ conda env create -f environment.yml
 conda activate distributed_training
 ```
 
+# Usage
+
+You will need to set up the different machines that the training will be distributed in by customasing the TF_CONFIG variables in the bash scripts in scripts files. 
+The index should be different for each worker's script.
+You will also need to change the path to the repository and the path to the conda environment as well according to your path.
+Start the distributed training by running the following commad:
+
+```sh
+/path/to/repo/scripts/run_distributed_training.sh -n nodes -d dataset
+```
+
+The nodes argument can be from 1 up to 3 (for up to 3 different machines).
+
+The supported dataset arguments are the following:
+
+* cifar_10
+* bert_imdb
+* natural_images_densenet
+* fashion_mnist
+* mnist
+
 # TODO
 
 *   Run and save the experiments
 *   Create report
-*   Upload results on README and polish repo
 
 # Contributors
 
