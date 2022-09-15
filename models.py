@@ -19,6 +19,7 @@ from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.applications import DenseNet121
 from tensorflow.keras.models import Model, Sequential
 from tensorflow.keras.optimizers import SGD
+import tensorflow.keras.backend as K
 
 from tensorflow.keras.preprocessing.image import img_to_array, ImageDataGenerator
 
@@ -109,11 +110,11 @@ class Cifar_10():
 
         return model
     
-    def run_model(self) -> Tuple[float, float]:
+    def fit_model(self) -> Tuple[float, float, int, int]:
         """Trains the cifar_10 model
 
         Returns:
-            Tuple[float, float]: total training time and final training accuracy
+            Tuple[float, float, int, int]: total training time, final training accuracy, trainable params and total params
         """
 
         train_dataset, x_train, y_train, _, _ = self.dataset()
@@ -121,15 +122,18 @@ class Cifar_10():
         img_shape = x_train[0].shape
         classes = len(np.unique(y_train))
 
-        cifar_model = self.model(inp_shape=img_shape, out_shape=classes)
-        
+        model = self.model(inp_shape=img_shape, out_shape=classes)
+        trainable_params = np.sum([K.count_params(w) for w in model.trainable_weights])
+        non_trainable_params = np.sum([K.count_params(w) for w in model.non_trainable_weights])
+        total_params = trainable_params + non_trainable_params
+
         tic = perf_counter()
-        history = cifar_model.fit(train_dataset, batch_size=self.batch_size, epochs=self.epochs, steps_per_epoch=x_train.shape[0] // self.batch_size)
+        history = model.fit(train_dataset, batch_size=self.batch_size, epochs=self.epochs, steps_per_epoch=x_train.shape[0] // self.batch_size)
         training_time = perf_counter() - tic
         
         training_accuracy = history.history['accuracy'][-1]
 
-        return training_time, training_accuracy
+        return training_time, training_accuracy, trainable_params, total_params
 
 
 class IMDB_sentiment():
@@ -212,17 +216,20 @@ class IMDB_sentiment():
 
         return train_data, test_data
     
-    def run_model(self) -> Tuple[float, float]:
+    def fit_model(self) -> Tuple[float, float, int, int]:
         """Trains the bert transformer on IMBD_sentiment_analysis data
 
         Returns:
-            Tuple[float, float]: total training time and final training accuracy
+            Tuple[float, float, int, int]: total training time, final training accuracy, trainable params and total params
         """
         
         train_data, _ = self.dataset()
         train_data = train_data.with_options(options)
-        
+
         model = TFBertForSequenceClassification.from_pretrained("bert-base-uncased")
+        trainable_params = np.sum([K.count_params(w) for w in model.trainable_weights])
+        non_trainable_params = np.sum([K.count_params(w) for w in model.non_trainable_weights])
+        total_params = trainable_params + non_trainable_params
 
         #Only the last layer will be fine tuned cause of RAM limitations
         for layer in model.layers[:-1]:
@@ -234,12 +241,12 @@ class IMDB_sentiment():
 
 
         tic = perf_counter()
-        history = model.fit(train_data, batch_size=self.batch_size, epochs=self.epochs)
+        history = model.fit(train_data, batch_size=self.batch_size, epochs=self.epochs, steps_per_epoch=45000//self.batch_size)
         training_time = perf_counter() - tic
         
         training_accuracy = history.history['accuracy'][-1]
 
-        return training_time, training_accuracy
+        return training_time, training_accuracy, trainable_params, total_params
 
 
 class Natural_images_densenet():
@@ -312,11 +319,11 @@ class Natural_images_densenet():
         
         return model
     
-    def run_model(self) -> Tuple[float, float]:
+    def fit_model(self) -> Tuple[float, float, int, int]:
         """Trains the densenet model on natural images data
 
         Returns:
-            Tuple[float, float]: total training time and final training accuracy
+            Tuple[float, float, int, int]: total training time, final training accuracy, trainable params and total params
         """
         
         x_train, _, y_train, _ = self.dataset()
@@ -326,6 +333,9 @@ class Natural_images_densenet():
         training_data = data_gen.flow(x_train, y_train, batch_size=self.batch_size)
 
         model = self.model()
+        trainable_params = np.sum([K.count_params(w) for w in model.trainable_weights])
+        non_trainable_params = np.sum([K.count_params(w) for w in model.non_trainable_weights])
+        total_params = trainable_params + non_trainable_params
 
         tic = perf_counter()
         history = model.fit(training_data, batch_size=self.batch_size, epochs=self.epochs, steps_per_epoch=x_train.shape[0] // self.batch_size)
@@ -333,7 +343,7 @@ class Natural_images_densenet():
         
         training_accuracy = history.history['accuracy'][-1]
 
-        return training_time, training_accuracy
+        return training_time, training_accuracy, trainable_params, total_params
         
 
 class Fashion_mnist():
@@ -390,17 +400,20 @@ class Fashion_mnist():
 
         return model
 
-    def run_model(self) -> Tuple[float, float]:
+    def fit_model(self) -> Tuple[float, float, int, int]:
         """Trains the fashion-mnist model that was created
 
         Returns:
-            Tuple[float, float]: total training time and final training accuracy
+            Tuple[float, float, int, int]: total training time, final training accuracy, trainable params and total params
         """
         
         train_dataset, x_train, _, _, _ = self.dataset()
         train_dataset = train_dataset.with_options(options)
 
         model = self.model()
+        trainable_params = np.sum([K.count_params(w) for w in model.trainable_weights])
+        non_trainable_params = np.sum([K.count_params(w) for w in model.non_trainable_weights])
+        total_params = trainable_params + non_trainable_params
 
         tic = perf_counter()
         history = model.fit(train_dataset, batch_size=self.batch_size, epochs=self.epochs, steps_per_epoch=x_train.shape[0] // self.batch_size)
@@ -408,7 +421,7 @@ class Fashion_mnist():
         
         training_accuracy = history.history['accuracy'][-1]
 
-        return training_time, training_accuracy
+        return training_time, training_accuracy, trainable_params, total_params
 
 
 class Mnist_restnet():
@@ -462,17 +475,20 @@ class Mnist_restnet():
 
         return model
 
-    def run_model(self) -> Tuple[float, float]:
+    def fit_model(self) -> Tuple[float, float, int, int]:
         """Trains the mnist model with resnet50
 
         Returns:
-            Tuple[float, float]: total training time and final training accuracy
+            Tuple[float, float, int, int]: total training time, final training accuracy, trainable params and total params
         """
         
         train_dataset, x_train = self.dataset()
         train_dataset = train_dataset.with_options(options)
 
         model = self.model()
+        trainable_params = np.sum([K.count_params(w) for w in model.trainable_weights])
+        non_trainable_params = np.sum([K.count_params(w) for w in model.non_trainable_weights])
+        total_params = trainable_params + non_trainable_params
 
         tic = perf_counter()
         history = model.fit(train_dataset, batch_size=self.batch_size, epochs=self.epochs, steps_per_epoch=x_train.shape[0] // self.batch_size)
@@ -480,4 +496,4 @@ class Mnist_restnet():
         
         training_accuracy = history.history['accuracy'][-1]
 
-        return training_time, training_accuracy
+        return training_time, training_accuracy, trainable_params, total_params
