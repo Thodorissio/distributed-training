@@ -29,7 +29,7 @@ from transformers import InputExample, InputFeatures
 from typing import Tuple
 
 options = tf.data.Options()
-options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.DATA
+options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.AUTO
 
 #We set the seed value so as to have reproducible results
 seed_value = 42
