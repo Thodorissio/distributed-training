@@ -22,40 +22,40 @@ if __name__ == '__main__':
 
         batch_size = 64 * nodes
         epochs = 5
-        model = models.Cifar_10(batch_size = batch_size, epochs=epochs)
         strategy = tf.distribute.MultiWorkerMirroredStrategy()
 
         with strategy.scope():
+            model = models.Cifar_10(batch_size = batch_size, epochs=epochs)
             time, accuracy, trainable_params, total_params = model.fit_model()      
 
     elif model_name  == 'bert_imdb':
 
         batch_size = 128 * nodes
         epochs = 5
-        model = models.IMDB_sentiment(batch_size = batch_size, epochs=epochs)
         strategy = tf.distribute.MultiWorkerMirroredStrategy()
 
         with strategy.scope():
+            model = models.IMDB_sentiment(batch_size = batch_size, epochs=epochs)
             time, accuracy, trainable_params, total_params = model.fit_model()      
 
     elif model_name  == 'natural_images_densenet':
 
         batch_size = 64 * nodes
         epochs = 5
-        model = models.Natural_images_densenet(batch_size=batch_size, epochs=epochs)
         strategy = tf.distribute.MultiWorkerMirroredStrategy()
 
         with strategy.scope():
+            model = models.Natural_images_densenet(batch_size=batch_size, epochs=epochs)
             time, accuracy, trainable_params, total_params = model.fit_model()      
 
     elif model_name  == 'fashion_mnist':
 
         batch_size = 128 * nodes
         epochs = 5
-        model = models.Fashion_mnist(batch_size=batch_size, epochs=epochs)
         strategy = tf.distribute.MultiWorkerMirroredStrategy()
 
         with strategy.scope():
+            model = models.Fashion_mnist(batch_size=batch_size, epochs=epochs)
             time, accuracy, trainable_params, total_params = model.fit_model()
               
 
@@ -63,10 +63,10 @@ if __name__ == '__main__':
 
         batch_size = 64 * nodes
         epochs = 2
-        model = models.Mnist_restnet(batch_size=batch_size, epochs=epochs)
         strategy = tf.distribute.MultiWorkerMirroredStrategy()
 
         with strategy.scope():
+            model = models.Mnist_restnet(batch_size=batch_size, epochs=epochs)
             time, accuracy, trainable_params, total_params = model.fit_model()      
 
     else:
