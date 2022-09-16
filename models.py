@@ -128,7 +128,7 @@ class Cifar_10():
         total_params = trainable_params + non_trainable_params
 
         tic = perf_counter()
-        history = model.fit(train_dataset, batch_size=self.batch_size, epochs=self.epochs, steps_per_epoch=x_train.shape[0] // self.batch_size)
+        history = model.fit(train_dataset, batch_size=self.batch_size, epochs=self.epochs)
         training_time = perf_counter() - tic
         
         training_accuracy = history.history['accuracy'][-1]
@@ -241,7 +241,7 @@ class IMDB_sentiment():
 
 
         tic = perf_counter()
-        history = model.fit(train_data, batch_size=self.batch_size, epochs=self.epochs, steps_per_epoch=45000//self.batch_size)
+        history = model.fit(train_data, batch_size=self.batch_size, epochs=self.epochs)
         training_time = perf_counter() - tic
         
         training_accuracy = history.history['accuracy'][-1]
@@ -338,7 +338,7 @@ class Natural_images_densenet():
         total_params = trainable_params + non_trainable_params
 
         tic = perf_counter()
-        history = model.fit(training_data, batch_size=self.batch_size, epochs=self.epochs, steps_per_epoch=x_train.shape[0] // self.batch_size)
+        history = model.fit(training_data, batch_size=self.batch_size, epochs=self.epochs)
         training_time = perf_counter() - tic
         
         training_accuracy = history.history['accuracy'][-1]
@@ -416,7 +416,7 @@ class Fashion_mnist():
         total_params = trainable_params + non_trainable_params
 
         tic = perf_counter()
-        history = model.fit(train_dataset, batch_size=self.batch_size, epochs=self.epochs, steps_per_epoch=x_train.shape[0] // self.batch_size)
+        history = model.fit(train_dataset, batch_size=self.batch_size, epochs=self.epochs)
         training_time = perf_counter() - tic
         
         training_accuracy = history.history['accuracy'][-1]
@@ -491,7 +491,7 @@ class Mnist_restnet():
         total_params = trainable_params + non_trainable_params
 
         tic = perf_counter()
-        history = model.fit(train_dataset, batch_size=self.batch_size, epochs=self.epochs, steps_per_epoch=x_train.shape[0] // self.batch_size)
+        history = model.fit(train_dataset, batch_size=self.batch_size, epochs=self.epochs)
         training_time = perf_counter() - tic
         
         training_accuracy = history.history['accuracy'][-1]
