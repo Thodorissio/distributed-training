@@ -50,9 +50,9 @@ if __name__ == '__main__':
 
     elif model_name  == 'fashion_mnist':
 
-        fashion_mnist_batch_size = 128 * nodes
+        batch_size = 128 * nodes
         epochs = 5
-        model = models.Fashion_mnist(batch_size=fashion_mnist_batch_size, epochs=epochs)
+        model = models.Fashion_mnist(batch_size=batch_size, epochs=epochs)
         strategy = tf.distribute.MultiWorkerMirroredStrategy()
 
         with strategy.scope():
