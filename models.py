@@ -60,7 +60,7 @@ class Cifar_10():
         x_train, x_test = x_train / 255.0, x_test / 255.0
 
         y_train, y_test = y_train.flatten(), y_test.flatten()
-        train_dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train)).shuffle(60000).repeat().batch(self.batch_size)
+        train_dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train)).shuffle(60000).batch(self.batch_size)
 
         return train_dataset, x_train, y_train, x_test, y_test
 
@@ -209,7 +209,7 @@ class IMDB_sentiment():
         test_df = df[45000:]
 
         train_data = self.convert_data_to_tf_data(df=train_df, tokenizer=tokenizer)
-        train_data = train_data.repeat().batch(self.batch_size)
+        train_data = train_data.batch(self.batch_size)
 
         test_data = self.convert_data_to_tf_data(df=test_df, tokenizer=tokenizer)
         test_data = test_data.batch(self.batch_size)
@@ -376,7 +376,7 @@ class Fashion_mnist():
         test_norm = test_norm / 255.0
 
         train_dataset = tf.data.Dataset.from_tensor_slices(
-            (train_norm, train_y)).shuffle(60000).repeat().batch(self.batch_size)
+            (train_norm, train_y)).shuffle(60000).batch(self.batch_size)
 
         return train_dataset, train_norm, train_y, test_norm, test_y
     
@@ -449,7 +449,7 @@ class Mnist_restnet():
         y_train = tf.keras.utils.to_categorical(y_train , num_classes=10)
 
         train_dataset = tf.data.Dataset.from_tensor_slices(
-            (x_train, y_train)).shuffle(60000).repeat().batch(self.batch_size)
+            (x_train, y_train)).shuffle(60000).batch(self.batch_size)
 
         return train_dataset, x_train
     
