@@ -62,7 +62,7 @@ if __name__ == '__main__':
     elif model_name  == 'mnist':
 
         batch_size = 64 * nodes
-        epochs = 5
+        epochs = 2
         model = models.Mnist_restnet(batch_size=batch_size, epochs=epochs)
         strategy = tf.distribute.MultiWorkerMirroredStrategy()
 
