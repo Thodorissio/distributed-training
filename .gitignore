@@ -1,5 +1,4 @@
-# Jupyter Notebook
 .ipynb_checkpoints
 condaenv.sqijtuaw.requirements.txt
 __pycache__
-scripts/test_script.sh
+*.tar.gz
