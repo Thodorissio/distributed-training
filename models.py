@@ -4,7 +4,6 @@ import numpy as np
 import pandas as pd
 import cv2
 import os
-import shutil
 import random
 
 from sklearn.preprocessing import LabelBinarizer
@@ -24,12 +23,10 @@ import tensorflow.keras.backend as K
 
 from tensorflow.keras.preprocessing.image import img_to_array, ImageDataGenerator
 
-import tensorflow_hub as hub
-import tensorflow_text as text
-from official.nlp import optimization
+import nltk
+from nltk.corpus import movie_reviews
 
-from transformers import AutoTokenizer, TFBertForSequenceClassification
-from transformers import InputExample, InputFeatures
+from transformers import BertTokenizer, TFBertForSequenceClassification
 
 from typing import Tuple
 
@@ -148,80 +145,91 @@ class IMDB_sentiment():
         
         self.batch_size = batch_size
         self.epochs = epochs
+        nltk.download('movie_reviews')
 
     def dataset(self) -> tf.data.Dataset:
         """loads and preprocess the IMDB Dataset
 
         Returns:
-            tf.data.Dataset: training dataset tensor dataset
+            Tuple[tf.data.Dataset, tf.data.Dataset: training dataset and testing tensor datasets
         """
 
-        raw_train_ds = tf.keras.utils.text_dataset_from_directory(
-            '/home/user/distributed-training/datasets/Imdb/train',
-            batch_size=self.batch_size,
-            validation_split=0.2,
-            subset='training',
-            seed=seed_value)
+        documents = [(' '.join(movie_reviews.words(fileid)), category)
+             for category in movie_reviews.categories()
+             for fileid in movie_reviews.fileids(category)]
 
-        train_ds = raw_train_ds.cache().prefetch(buffer_size=AUTOTUNE)
+        train_set, _ = train_test_split(documents, test_size=0.1, random_state=42)
 
-        return train_ds
+        bert_tokenizer = BertTokenizer.from_pretrained("bert-base-uncased", do_lower_case=True)
+
+        X_train_text = [text for (text, label) in train_set]
+        y_train = [1 if label == 'pos' else 0 for text, label in train_set]
+
+        y_train = np.array(y_train)
+
+        bert_tokenizer = BertTokenizer.from_pretrained("bert-base-uncased", do_lower_case=True)
+
+        def convert_example_to_feature(review):
+            return bert_tokenizer.encode_plus(review, 
+                            add_special_tokens = True,    
+                            max_length = 512,              
+                            padding='max_length',
+                            truncation=True,
+                            return_attention_mask = True,  
+                        )
+        
+        def map_example_to_dict(input_ids, attention_masks, token_type_ids, label):
+            return {
+                "input_ids": input_ids,
+                "token_type_ids": token_type_ids,
+                "attention_mask": attention_masks,
+            }, label
+
+        def encode_examples(ds):
+            # prepare list, so that we can build up final TensorFlow dataset from slices.
+            input_ids_list = []
+            token_type_ids_list = []
+            attention_mask_list = []
+            label_list = []
+            for review, label in ds:
+                bert_input = convert_example_to_feature(review)
+                input_ids_list.append(bert_input['input_ids'])
+                token_type_ids_list.append(bert_input['token_type_ids'])
+                attention_mask_list.append(bert_input['attention_mask'])
+                label_list.append([label])
+
+            return tf.data.Dataset.from_tensor_slices((input_ids_list, attention_mask_list, token_type_ids_list, label_list)).map(map_example_to_dict)
+
+        ds_train = zip(X_train_text, y_train)
+        ds_train_encoded = encode_examples(ds_train).shuffle(len(X_train_text)).batch(self.batch_size)
+
+        return ds_train_encoded
 
     def model(self) -> tf.keras.Model:
-        """build the classifier model based on Bert for the IMBD sentiment analysis
+        
+        bert_model = TFBertForSequenceClassification.from_pretrained('bert-base-uncased', num_labels=2)
 
-        Returns:
-            tf.Keras.Model: built model
-        """
-
-        tfhub_handle_preprocess = 'https://tfhub.dev/tensorflow/bert_en_uncased_preprocess/3'
-        tfhub_handle_encoder = 'https://tfhub.dev/tensorflow/small_bert/bert_en_uncased_L-4_H-512_A-8/1'
-
-        text_input = tf.keras.layers.Input(shape=(), dtype=tf.string, name='text')
-        preprocessing_layer = hub.KerasLayer(tfhub_handle_preprocess, name='preprocessing')
-        encoder_inputs = preprocessing_layer(text_input)
-        encoder = hub.KerasLayer(tfhub_handle_encoder, trainable=True, name='BERT_encoder')
-
-        outputs = encoder(encoder_inputs)
-        net = outputs['pooled_output']
-        net = tf.keras.layers.Dropout(0.1)(net)
-        net = tf.keras.layers.Dense(1, activation=None, name='classifier')(net)
-
-        return tf.keras.Model(text_input, net)
+        return bert_model
 
     def fit_model(self) -> Tuple[float, float, int, int]:
-        """Trains the bert transformer on IMBD_sentiment_analysis data
-
-        Returns:
-            Tuple[float, float, int, int]: total training time, final training accuracy, trainable params and total params
-        """
-        
+    
         train_data = self.dataset()
-        train_data = train_data.with_options(options)
-
         model = self.model()
 
         trainable_params = np.sum([K.count_params(w) for w in model.trainable_weights])
         non_trainable_params = np.sum([K.count_params(w) for w in model.non_trainable_weights])
         total_params = trainable_params + non_trainable_params
 
-        loss = tf.keras.losses.BinaryCrossentropy(from_logits=True)
-        metrics = tf.metrics.BinaryAccuracy()
+        learning_rate = 2e-4
 
-        steps_per_epoch = tf.data.experimental.cardinality(train_data).numpy()
-        num_train_steps = steps_per_epoch * self.epochs
-        num_warmup_steps = int(0.1*num_train_steps)
+        optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, epsilon=1e-08)
+        loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+        metric = tf.keras.metrics.SparseCategoricalAccuracy('accuracy')
 
-        init_lr = 3e-5
-        optimizer = optimization.create_optimizer(init_lr=init_lr,
-                                                num_train_steps=num_train_steps,
-                                                num_warmup_steps=num_warmup_steps,
-                                                optimizer_type='adamw')
-
-        model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
+        model.compile(loss=loss,  optimizer=optimizer,  metrics=metric)
 
         tic = perf_counter()
-        history = model.fit(train_data, epochs=self.epochs)
+        history = model.fit(train_data, epochs=self.epochs, batch_size=self.batch_size)
         training_time = perf_counter() - tic
         
         training_accuracy = history.history['binary_accuracy'][-1]
