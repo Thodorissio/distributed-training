@@ -278,6 +278,9 @@ class Natural_images_densenet():
 
         densenet = DenseNet121(weights='imagenet', include_top=False, input_shape=(128, 128, 3))
 
+        for layer in densenet.layers[:-2]:
+            layer.trainable=False
+
         x = GlobalAveragePooling2D()(densenet.output)
         x = BatchNormalization()(x)
         x = Dropout(0.5)(x)
@@ -288,9 +291,6 @@ class Natural_images_densenet():
 
         preds = Dense(8, activation='softmax')(x)
         model = Model(inputs=densenet.input, outputs=preds)
-
-        for layer in model.layers[:-8]:
-            layer.trainable=False
 
         model.compile(optimizer='Adam',loss='categorical_crossentropy',metrics=['accuracy'])
         
