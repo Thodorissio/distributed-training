@@ -30,7 +30,7 @@ if __name__ == '__main__':
 
     elif model_name  == 'bert_imdb':
 
-        batch_size = 128 * nodes
+        batch_size = 32 * nodes
         epochs = 5
         strategy = tf.distribute.MultiWorkerMirroredStrategy()
 

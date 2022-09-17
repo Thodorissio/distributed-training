@@ -180,7 +180,7 @@ class IMDB_sentiment():
         text_input = tf.keras.layers.Input(shape=(), dtype=tf.string, name='text')
         preprocessing_layer = hub.KerasLayer(tfhub_handle_preprocess, name='preprocessing')
         encoder_inputs = preprocessing_layer(text_input)
-        encoder = hub.KerasLayer(tfhub_handle_encoder, trainable=False, name='BERT_encoder')
+        encoder = hub.KerasLayer(tfhub_handle_encoder, trainable=True, name='BERT_encoder')
 
         outputs = encoder(encoder_inputs)
         net = outputs['pooled_output']
@@ -291,9 +291,6 @@ class Natural_images_densenet():
 
         for layer in model.layers[:-8]:
             layer.trainable=False
-            
-        for layer in model.layers[-8:]:
-            layer.trainable=True
 
         model.compile(optimizer='Adam',loss='categorical_crossentropy',metrics=['accuracy'])
         
