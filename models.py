@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import cv2
 import os
+import shutil
 import random
 
 from sklearn.preprocessing import LabelBinarizer
@@ -23,6 +24,10 @@ import tensorflow.keras.backend as K
 
 from tensorflow.keras.preprocessing.image import img_to_array, ImageDataGenerator
 
+import tensorflow_hub as hub
+import tensorflow_text as text
+from official.nlp import optimization
+
 from transformers import AutoTokenizer, TFBertForSequenceClassification
 from transformers import InputExample, InputFeatures
 
@@ -30,6 +35,7 @@ from typing import Tuple
 
 options = tf.data.Options()
 options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.AUTO
+AUTOTUNE = tf.data.AUTOTUNE
 
 #We set the seed value so as to have reproducible results
 seed_value = 42
@@ -143,79 +149,46 @@ class IMDB_sentiment():
         self.batch_size = batch_size
         self.epochs = epochs
 
-    def convert_data_to_tf_data(self, df: pd.DataFrame, tokenizer: AutoTokenizer) -> pd.DataFrame:
-            
-            examples_df = df.apply(lambda x: InputExample(
-                                                guid=None, 
-                                                text_a = x['review'], 
-                                                label = x['sentiment']), 
-                                                axis = 1,
-                                            )
-            
-            features = [] 
-
-            for e in examples_df:
-                input_dict = tokenizer.encode_plus(
-                    e.text_a,
-                    add_special_tokens=True,    
-                    max_length=128,    
-                    return_token_type_ids=True,
-                    return_attention_mask=True,
-                    pad_to_max_length=True, 
-                    truncation=True
-                )
-
-                input_ids, token_type_ids, attention_mask = (input_dict["input_ids"],input_dict["token_type_ids"], input_dict['attention_mask'])
-                features.append(InputFeatures( input_ids=input_ids, attention_mask=attention_mask, token_type_ids=token_type_ids, label=e.label) )
-
-            def gen():
-                for f in features:
-                    yield (
-                        {
-                            "input_ids": f.input_ids,
-                            "attention_mask": f.attention_mask,
-                            "token_type_ids": f.token_type_ids,
-                        },
-                        f.label,
-                    )
-
-            return tf.data.Dataset.from_generator(
-                gen,
-                ({"input_ids": tf.int32, "attention_mask": tf.int32, "token_type_ids": tf.int32}, tf.int64),
-                (
-                    {
-                        "input_ids": tf.TensorShape([None]),
-                        "attention_mask": tf.TensorShape([None]),
-                        "token_type_ids": tf.TensorShape([None]),
-                    },
-                    tf.TensorShape([]),
-                ),
-            )
-
-    def dataset(self) -> Tuple[tf.data.Dataset, tf.data.Dataset]:
-        """loads the IMDB Dataset
+    def dataset(self) -> tf.data.Dataset:
+        """loads and preprocess the IMDB Dataset
 
         Returns:
-            Tuple[tf.data.Dataset, tf.data.Dataset: training dataset and testing tensor datasets
+            tf.data.Dataset: training dataset tensor dataset
         """
 
-        df = pd.read_csv("/home/user/distributed-training/datasets/IMDB Dataset.csv")
+        raw_train_ds = tf.keras.utils.text_dataset_from_directory(
+            '/home/user/distributed-training/datasets/Imdb/train',
+            batch_size=self.batch_size,
+            validation_split=0.2,
+            subset='training',
+            seed=seed_value)
 
-        tokenizer = AutoTokenizer.from_pretrained("bert-base-cased")
+        train_ds = raw_train_ds.cache().prefetch(buffer_size=AUTOTUNE)
 
-        df['sentiment'] = df['sentiment'].apply(lambda x: 1 if x == 'positive' else 0)
+        return train_ds
 
-        train_df = df[:45000] 
-        test_df = df[45000:]
+    def model(self) -> tf.keras.Model:
+        """build the classifier model based on Bert for the IMBD sentiment analysis
 
-        train_data = self.convert_data_to_tf_data(df=train_df, tokenizer=tokenizer)
-        train_data = train_data.repeat().batch(self.batch_size)
+        Returns:
+            tf.Keras.Model: built model
+        """
 
-        test_data = self.convert_data_to_tf_data(df=test_df, tokenizer=tokenizer)
-        test_data = test_data.batch(self.batch_size)
+        tfhub_handle_preprocess = 'https://tfhub.dev/tensorflow/bert_en_uncased_preprocess/3'
+        tfhub_handle_encoder = 'https://tfhub.dev/tensorflow/small_bert/bert_en_uncased_L-4_H-512_A-8/1'
 
-        return train_data, test_data
-    
+        text_input = tf.keras.layers.Input(shape=(), dtype=tf.string, name='text')
+        preprocessing_layer = hub.KerasLayer(tfhub_handle_preprocess, name='preprocessing')
+        encoder_inputs = preprocessing_layer(text_input)
+        encoder = hub.KerasLayer(tfhub_handle_encoder, trainable=False, name='BERT_encoder')
+
+        outputs = encoder(encoder_inputs)
+        net = outputs['pooled_output']
+        net = tf.keras.layers.Dropout(0.1)(net)
+        net = tf.keras.layers.Dense(1, activation=None, name='classifier')(net)
+
+        return tf.keras.Model(text_input, net)
+
     def fit_model(self) -> Tuple[float, float, int, int]:
         """Trains the bert transformer on IMBD_sentiment_analysis data
 
@@ -223,28 +196,35 @@ class IMDB_sentiment():
             Tuple[float, float, int, int]: total training time, final training accuracy, trainable params and total params
         """
         
-        train_data, _ = self.dataset()
+        train_data = self.dataset()
         train_data = train_data.with_options(options)
 
-        model = TFBertForSequenceClassification.from_pretrained("bert-base-uncased")
+        model = self.model()
+
         trainable_params = np.sum([K.count_params(w) for w in model.trainable_weights])
         non_trainable_params = np.sum([K.count_params(w) for w in model.non_trainable_weights])
         total_params = trainable_params + non_trainable_params
 
-        #Only the last layer will be fine tuned cause of RAM limitations
-        for layer in model.layers[:-1]:
-            layer.trainable=False
+        loss = tf.keras.losses.BinaryCrossentropy(from_logits=True)
+        metrics = tf.metrics.BinaryAccuracy()
 
-        model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=3e-5, epsilon=1e-08, clipnorm=1.0), 
-            loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True), 
-            metrics=[tf.keras.metrics.SparseCategoricalAccuracy('accuracy')])
+        steps_per_epoch = tf.data.experimental.cardinality(train_data).numpy()
+        num_train_steps = steps_per_epoch * self.epochs
+        num_warmup_steps = int(0.1*num_train_steps)
 
+        init_lr = 3e-5
+        optimizer = optimization.create_optimizer(init_lr=init_lr,
+                                                num_train_steps=num_train_steps,
+                                                num_warmup_steps=num_warmup_steps,
+                                                optimizer_type='adamw')
+
+        model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
 
         tic = perf_counter()
-        history = model.fit(train_data, batch_size=self.batch_size, epochs=self.epochs, steps_per_epoch=45000//self.batch_size)
+        history = model.fit(train_data, epochs=self.epochs)
         training_time = perf_counter() - tic
         
-        training_accuracy = history.history['accuracy'][-1]
+        training_accuracy = history.history['binary_accuracy'][-1]
 
         return training_time, training_accuracy, trainable_params, total_params
 
