@@ -218,7 +218,6 @@ class Bert_movies():
                 encoder_layer.trainable = True
         bert_model.layers[0].embeddings.trainable = False
         bert_model.layers[0].pooler.trainable = False
-        bert_model.summary()
         
         return bert_model
 
