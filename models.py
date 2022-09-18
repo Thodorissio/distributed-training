@@ -167,8 +167,6 @@ class IMDB_sentiment():
 
         y_train = np.array(y_train)
 
-        bert_tokenizer = BertTokenizer.from_pretrained("bert-base-uncased", do_lower_case=True)
-
         def convert_example_to_feature(review):
             return bert_tokenizer.encode_plus(review, 
                             add_special_tokens = True,    
@@ -208,7 +206,14 @@ class IMDB_sentiment():
     def model(self) -> tf.keras.Model:
         
         bert_model = TFBertForSequenceClassification.from_pretrained('bert-base-uncased', num_labels=2)
-
+        for i,encoder_layer in enumerate(bert_model.layers[0].encoder.layer):
+            if i < len(bert_model.layers[0].encoder.layer) - 1:
+                encoder_layer.trainable = False
+            else:
+                encoder_layer.trainable = True
+        bert_model.layers[0].embeddings.trainable = False
+        bert_model.layers[0].pooler.trainable = False
+        bert_model.summary()
         return bert_model
 
     def fit_model(self) -> Tuple[float, float, int, int]:
@@ -232,7 +237,7 @@ class IMDB_sentiment():
         history = model.fit(train_data, epochs=self.epochs, batch_size=self.batch_size)
         training_time = perf_counter() - tic
         
-        training_accuracy = history.history['binary_accuracy'][-1]
+        training_accuracy = history.history['accuracy'][-1]
 
         return training_time, training_accuracy, trainable_params, total_params
 
