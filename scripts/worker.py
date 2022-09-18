@@ -41,7 +41,7 @@ if __name__ == '__main__':
 
     elif model_name  == 'natural_images_densenet':
 
-        batch_size = 16 * nodes
+        batch_size = 256 * nodes
         epochs = 5
         strategy = tf.distribute.MultiWorkerMirroredStrategy()
 
