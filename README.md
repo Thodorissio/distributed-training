@@ -3,8 +3,6 @@
 Link gia to report:
 https://www.overleaf.com/7682747425xzwvhrzyythq
 
-**Simiosi apo boura** (tha diagrafei sto telos apto readme ) : exo to arxiko report se odt kai docx giati dn ksero latex .mporeite na sublirosete ekei kai na ta kanoume latex sto telos i kati tetoio. (tha diagrafoun ta report arxeia apo to github repo sto telos)
-
 # Overview
 
 This repo focuses on the effect that distributed model training has on training time. We will experiment with different number of nodes (up to 3) as well as with different types of neural network models (e.g. simple dense nn, ResNet 50, Bert).
@@ -35,15 +33,10 @@ The nodes argument can be from 1 up to 3 (for up to 3 different machines).
 The supported dataset arguments are the following:
 
 * cifar_10
-* bert_imdb
+* bert_movies
 * natural_images_densenet
 * fashion_mnist
 * mnist
-
-# TODO
-
-*   Run and save the experiments
-*   Create report
 
 # Contributors
 

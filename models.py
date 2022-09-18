@@ -139,7 +139,7 @@ class Cifar_10():
         return training_time, training_accuracy, trainable_params, total_params
 
 
-class IMDB_sentiment():
+class Bert_movies():
 
     def __init__(self, batch_size: int, epochs: int) -> None:
         
@@ -148,7 +148,7 @@ class IMDB_sentiment():
         nltk.download('movie_reviews')
 
     def dataset(self) -> tf.data.Dataset:
-        """loads and preprocess the IMDB Dataset
+        """loads and preprocess the nltk movie reviews dataset
 
         Returns:
             Tuple[tf.data.Dataset, tf.data.Dataset: training dataset and testing tensor datasets
@@ -204,7 +204,12 @@ class IMDB_sentiment():
         return ds_train_encoded
 
     def model(self) -> tf.keras.Model:
-        
+        """builds bert model and classifier
+
+        Returns:
+            tf.keras.Model: built model
+        """
+
         bert_model = TFBertForSequenceClassification.from_pretrained('bert-base-uncased', num_labels=2)
         for i,encoder_layer in enumerate(bert_model.layers[0].encoder.layer):
             if i < len(bert_model.layers[0].encoder.layer) - 1:
@@ -214,10 +219,15 @@ class IMDB_sentiment():
         bert_model.layers[0].embeddings.trainable = False
         bert_model.layers[0].pooler.trainable = False
         bert_model.summary()
+        
         return bert_model
 
     def fit_model(self) -> Tuple[float, float, int, int]:
-    
+        """Trains the bert model on movie reviews data
+
+        Returns:
+            Tuple[float, float, int, int]: total training time, final training accuracy, trainable params and total params
+        """
         train_data = self.dataset()
         model = self.model()
 

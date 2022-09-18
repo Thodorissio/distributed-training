@@ -28,7 +28,7 @@ if __name__ == '__main__':
             model = models.Cifar_10(batch_size = batch_size, epochs=epochs)
             time, accuracy, trainable_params, total_params = model.fit_model()      
 
-    elif model_name  == 'bert_imdb':
+    elif model_name  == 'bert_movies':
 
         batch_size = 16 * nodes
         epochs = 3
@@ -36,7 +36,7 @@ if __name__ == '__main__':
         strategy = tf.distribute.MultiWorkerMirroredStrategy()        
 
         with strategy.scope():
-            model = models.IMDB_sentiment(batch_size = batch_size, epochs=epochs)
+            model = models.Bert_movies(batch_size = batch_size, epochs=epochs)
             time, accuracy, trainable_params, total_params = model.fit_model()      
 
     elif model_name  == 'natural_images_densenet':
@@ -76,7 +76,7 @@ if __name__ == '__main__':
         print('Invalid dataset given.')
         print('Availiable datasets:')
         print('- cifar_10')
-        print('- bert_imdb')
+        print('- bert_movies')
         print('- natural_images_densenet')
         print('- fashion_mnist')
         print('- mnist')
