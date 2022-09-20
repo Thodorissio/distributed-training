@@ -1,8 +1,3 @@
-# Important Note to contributors
-
-Link gia to report:
-https://www.overleaf.com/7682747425xzwvhrzyythq
-
 # Overview
 
 This repo focuses on the effect that distributed model training has on training time. We will experiment with different number of nodes (up to 3) as well as with different types of neural network models (e.g. simple dense nn, ResNet 50, Bert).
@@ -21,8 +16,9 @@ conda activate distributed_training
 
 You will need to set up the different machines that the training will be distributed in by customasing the TF_CONFIG variables in the bash scripts in scripts files. 
 The index should be different for each worker's script.
-You will also need to change the path to the repository and the path to the conda environment as well according to your path.
-Start the distributed training by running the following commad:
+You will also need to change the path to the repository and the path to the conda environment as well according to your path. Please apply these path changes in the 
+worker file in order to save your results.
+Start the distributed training by running the following command:
 
 ```sh
 /path/to/repo/scripts/run_distributed_training.sh -n nodes -d dataset
